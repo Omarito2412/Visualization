@@ -1,0 +1,141 @@
+<html>
+<head>
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <style type="text/css">
+        .link {
+            fill: none;
+            stroke: #ccc;
+            stroke-width: 2px;
+        }
+        svg {
+            height: 100%;
+            width: 100%;
+         }
+        .node text { font: 10px sans-serif; }
+        .tooltip {
+            position: absolute;
+            border: solid 2px #a09e9e;
+            border-radius: 5px;
+            background-color: #ccc;
+        }
+        .list {
+            list-style: none;
+            margin-left: -10%;
+        }
+        .hidden {
+            opacity: 0 !important;
+            top: 0 !important;
+            left: 0 !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Adapted from https://bl.ocks.org/d3noob/08ecb6ea9bb68ba0d9a7e89f344acec8 -->
+    <script type="text/javascript">
+        d3.json("output.json", function(data){
+            var margin = {"x": 300, "y": 100};
+            var r = 16;
+            var int2class = {
+                0: "Very Negative",
+                1: "Negative",
+                2: "Neutral",
+                3: "Positive",
+                4: "Very Positive"
+            };
+            var canvas = d3.select("body").append("svg").append("g").attr("transform", function (d) {
+                return "translate(" + margin["x"] + ", " + margin["y"] + ")";
+            });
+            var layout = d3.tree().size([700, 550]);
+            var nodes = layout(d3.hierarchy(data["node"], function (d) {
+                if (d.isLeaf) {
+                    return null;
+                }
+                children = [];
+                for (node in d.node) {
+                    if(typeof d.node[node].leaf != "undefined"){
+                        datum = d.node[node].leaf;
+                        datum.class = d.node[node].class;
+                        datum.predictions = d.node[node].predictions;
+                        children.push(datum);
+                    }
+                    else {
+                        children.push(d.node[node]);
+                    }
+                }
+                return children;
+            }));
+
+            var tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+            var links = nodes.descendants().slice(1);
+            var node = canvas.selectAll(".node")
+                        .data(nodes.descendants())
+                        .enter()
+                        .append("g")
+                        .attr('class', 'node')
+                        .attr('transform', function (d) {return "translate(" + d.x + "," + d.y + ")"});
+
+
+            node.append("circle")
+                .attr("r", r)
+                .attr("stroke", "black")
+                .attr("stroke-width", "1")
+                .attr("fill", function (d) {
+                    switch(d.data.class) {
+                        case -1:
+                            return "#9c9797";
+                            break;
+                        case 0:
+                            return "#e40303";
+                            break;
+                        case 1:
+                            return "#d07a7a";
+                            break;
+                        case 2:
+                            return "#9c9797";
+                            break;
+                        case 3:
+                            return "#84d894";
+                            break;
+                        case 4:
+                            return "#008e1a";
+                            break;
+                    }
+                }).on("mouseover", function (d) {
+                            console.log("mouseover");
+                            predictions = JSON.parse(d.data.predictions);
+                            html = "<strong>" + d.data.value + "</strong><ul class=\"list\">";
+
+                            for (prediction in predictions) {
+                                p = Math.round(predictions[prediction] * 100);
+                                html += "<li>" + int2class[prediction] + ": " + p + "%</li>";
+                            }
+                            html += "</ul>";
+                            tooltip.transition().duration(500).style("opacity", 0.9);
+                            tooltip.html(html);
+                            tooltip.style("left", d.x + margin["x"] + 2 * r).style("top", d.y + margin["y"] - 1.2 * r).attr("class", "tooltip");
+                        }).on("mouseout", function (d) {
+                            console.log("mouse out");
+                            tooltip.transition().delay(500).attr("class", "hidden");
+                        });
+            node.append("text")
+                .text(function (d) {
+                    return d.data.value;
+                })
+                .attr("text-anchor", "middle");
+            var link = canvas.selectAll(".link")
+                        .data(links)
+                        .enter()
+                        .append("path")
+                        .attr("class", "link")
+                        .attr("fill", "none")
+                        .attr("stroke", "#ADADAD")
+                        .attr("d", function (d) {
+                            return "M" + (d.x) + "," + (d.y - r - 1)
+                             + "C" + (d.x + d.parent.x) / 2 + "," + d.y
+                             + " " + (d.x + d.parent.x) / 2 + "," + d.parent.y
+                             + " " + d.parent.x + "," + (d.parent.y + r + 2);
+                        });
+        });
+    </script>
+</body>
+</html>
